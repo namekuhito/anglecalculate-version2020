@@ -1,0 +1,499 @@
+using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Data;
+using System.Drawing;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Windows.Forms;
+using System.Diagnostics;
+using System.IO;
+using System.Windows.Forms.DataVisualization.Charting;
+
+namespace newapp1
+{
+    public partial class Form1 : Form
+    {
+        string jointnumber;
+        string fname;
+        string jointname;
+
+        public Form1()
+        {
+            InitializeComponent();
+
+            股関節屈曲.Image = Image.FromFile("C:\\Users\\mukai\\Desktop\\リンゴ\\股関節屈曲.jpg");//股関節屈曲アイコン追加
+            膝関節屈曲.Image = Image.FromFile("C:\\Users\\mukai\\Desktop\\リンゴ\\膝関節屈曲.jpg");//膝関節屈曲アイコン追加
+            足関節屈曲.Image = Image.FromFile("C:\\Users\\mukai\\Desktop\\リンゴ\\足関節屈曲.jpg");//足関節屈曲アイコン追加
+            //股関節伸展.Image = Image.FromFile("画像のパス");//股関節伸展アイコン追加
+            //膝関節伸展.Image = Image.FromFile("画像のパス);//膝関節伸展アイコン追加
+            足関節伸展.Image = Image.FromFile("C:\\Users\\mukai\\Desktop\\リンゴ\\足関節伸展.jpg");//足関節伸展アイコン追加
+        }
+
+        private void Form1_Load(object sender, EventArgs e)
+        {
+            関節名＿label.Text = "股関節屈曲";//default
+            関節選択＿comboBox.Items.Add("股関節屈曲");
+            関節選択＿comboBox.Items.Add("膝関節屈曲");
+            関節選択＿comboBox.Items.Add("足関節屈曲");
+        }
+
+//////////メイン画面//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        private void クリア_Click(object sender, EventArgs e)
+        {
+            名前入力フォーム.ResetText();//名前入力フォームのクリア
+        }
+
+        private void 開始_Click(object sender, EventArgs e)
+        {
+            //画像フォルダの初期化
+            pictureBox1.Image = null;
+            if (System.IO.Directory.Exists(@"C:\openpose-build\x64\newmedia"))
+            {
+                System.IO.Directory.Delete(@"C:\openpose-build\x64\newmedia", true);
+            }
+
+            if (System.IO.Directory.Exists(@"C:\openpose-build\x64\result_json"))
+            {
+                System.IO.Directory.Delete(@"C:\openpose-build\x64\result_json", true);
+            }
+
+            被験者名前＿label.ResetText(); //名前リセット
+            関節名＿label.ResetText(); //関節名リセット
+
+            if (名前入力フォーム.Text == "") MessageBox.Show("名前が入力されていません。",
+            "エラー", MessageBoxButtons.OK, MessageBoxIcon.Error); //名前入力フォームに名前がないと警告
+
+            被験者名前＿label.Text = 名前入力フォーム.Text; //名前をメインメニューで入力されたものにする
+
+            wizardControl1.SelectedIndex = 1; //ページの遷移
+        }
+
+        private void 記録_Click(object sender, EventArgs e)
+        {
+            if (名前入力フォーム.Text == "") MessageBox.Show("名前が入力されていません。",
+            "エラー", MessageBoxButtons.OK, MessageBoxIcon.Error); //名前入力フォームに名前がないと警告
+            else
+            {
+                wizardControl1.SelectedIndex = 4; //ページの遷移
+            }
+        }
+
+        private void 使用方法_Click(object sender, EventArgs e)
+        {
+            MessageBox.Show("現在選択できません。",
+            "エラー",MessageBoxButtons.OK,MessageBoxIcon.Error);
+        }
+
+        private void 終了_Click(object sender, EventArgs e)
+        {
+            Application.Exit(); //アプリケーションの終了
+        }
+
+//////////測定関節選択画面//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        private void 戻る＿測定関節選択画面_Click(object sender, EventArgs e)
+        {
+            wizardControl1.SelectedIndex = 0;//ページの遷移
+        }
+
+        private void 股関節屈曲_Click(object sender, EventArgs e)
+        {
+            jointnumber = ("1");        //jointnumberはC++計算プログラムに渡す引数
+            jointname = "股関節屈曲";
+            関節名＿label.Text = jointname + "　　[参考可動域] 125度";
+
+            wizardControl1.SelectedIndex = 2; //ページの遷移
+        }
+
+        private void 膝関節屈曲_Click(object sender, EventArgs e)
+        {
+            jointnumber = ("2");        //jointnumberはC++計算プログラムに渡す引数
+            jointname = "膝関節屈曲";
+            関節名＿label.Text = jointname + "　　[参考可動域] 130度";
+
+            wizardControl1.SelectedIndex = 2; //ページの遷移
+
+        }
+
+        private void 足関節屈曲_Click(object sender, EventArgs e)
+        {
+            jointnumber = ("3");        //jointnumberはC++計算プログラムに渡す引数
+            jointname = "足関節屈曲";
+            関節名＿label.Text = jointname + "　　[参考可動域] 45度";
+
+            wizardControl1.SelectedIndex = 2; //ページの遷移
+
+        }
+
+        private void 股関節伸展_Click(object sender, EventArgs e)
+        {
+            MessageBox.Show("現在選択できません。",
+            "エラー", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+
+        private void 膝関節伸展_Click(object sender, EventArgs e)
+        {
+            MessageBox.Show("現在選択できません。",
+            "エラー", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+
+        private void 足関節伸展_Click(object sender, EventArgs e)
+        {
+            jointnumber = ("6");        //jointnumberはC++計算プログラムに渡す引数
+            jointname = "足関節伸展";
+            関節名＿label.Text = jointname + "　　[参考可動域] 20度";
+
+            wizardControl1.SelectedIndex = 2;//ページの遷移
+
+        }
+
+//////////画像取得画面//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        private void 写真を撮影する_Click(object sender, EventArgs e)
+        {
+           MessageBox.Show("現在選択できません。",
+           "エラー",
+           MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+
+        private void 画像を選択する_Click(object sender, EventArgs e)
+        {
+            using (OpenFileDialog ofd = new OpenFileDialog())
+            {
+                ofd.InitialDirectory = @"C:\Users\mukai\Pictures";
+                ofd.Title = "画像を選択してください";
+                ofd.RestoreDirectory = true;
+
+                if (ofd.ShowDialog() == DialogResult.OK)
+                {
+                    fname = ofd.FileName;
+                    System.IO.DirectoryInfo di = System.IO.Directory.CreateDirectory(@"C:\openpose-build\x64\newmedia");
+                    File.Copy(fname, @"C:\openpose-build\x64\newmedia\001.jpg");
+                }
+            }
+
+            //OpenPoseのパラメータセット
+            Process openpose = new Process();
+            openpose.StartInfo.FileName = "Release\\OpenPoseDemo.exe";
+            openpose.StartInfo.CreateNoWindow = true;
+            openpose.StartInfo.ErrorDialog = true;
+            openpose.StartInfo.WindowStyle = System.Diagnostics.ProcessWindowStyle.Hidden;
+
+            //OpenPoseコマンドの指定
+            openpose.StartInfo.Arguments = "--image_dir newmedia --write_images result_image --write_json result_json --display 0 --number_people_max 1";
+            //openpose.StartInfo.Arguments = "--process_real_time --write_json result_json";
+            //OpenPoseを実行し、終了まで待機
+            openpose.Start();
+            openpose.WaitForExit();
+
+            //角度計算を行うＣ++プログラムのパラメータセット
+            Process calculate = new Process();
+            calculate.StartInfo.FileName = "20180906.exe";
+            calculate.StartInfo.Arguments = jointnumber;
+            calculate.StartInfo.CreateNoWindow = true;
+            calculate.StartInfo.ErrorDialog = true;
+            calculate.StartInfo.WindowStyle = System.Diagnostics.ProcessWindowStyle.Hidden;
+
+            //角度計算プログラムを実行し、終了まで待機
+            calculate.Start();
+            calculate.WaitForExit();
+
+            //結果画像の表示
+            pictureBox1.SizeMode = PictureBoxSizeMode.Zoom;
+            string[] files = Directory.GetFiles(@"C:\openpose-build\x64\result_picture", "*.bmp");
+            Directory.GetFiles(@"C:\openpose-build\x64\result_picture", "*.bmp");
+            string newest = string.Empty;
+            System.DateTime updateTime = System.DateTime.MinValue;
+            foreach (string file in files)
+            {
+                System.IO.FileInfo fi = new System.IO.FileInfo(file);
+                if (fi.LastWriteTime > updateTime)
+                {
+                    updateTime = fi.LastWriteTime;
+                    newest = file;
+                }
+            }
+            pictureBox1.Image = Image.FromFile(newest);
+
+            //角度の表示
+            測定角度＿label.Text = calculate.ExitCode.ToString() + "度";
+
+            //名前が入力されている場合のみ、値をファイルに保存
+            if (名前入力フォーム.Text != "")
+            {
+                //ファイルのパス
+                string filePath = @"C:\Users\mukai\Desktop\result\" + 名前入力フォーム.Text + " " + jointname + ".txt";
+                System.IO.StreamWriter sw = new System.IO.StreamWriter(filePath, true, System.Text.Encoding.GetEncoding("utf-8"));
+                sw.WriteLine(calculate.ExitCode.ToString());//計測結果記録
+                sw.Close();
+
+            }
+
+            wizardControl1.SelectedIndex = 3;//ページの遷移
+
+        }
+
+        private void 戻る＿画像取得画面_Click(object sender, EventArgs e)
+        {
+            wizardControl1.SelectedIndex = 1;//ページの遷移
+        }
+
+//////////結果画面//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        private void 結果を比較する_Click(object sender, EventArgs e)
+        {
+            記録＿chart.ChartAreas.Clear();  //描画領域
+
+            記録＿chart.Series.Clear();      //データ・色・種類等
+            記録＿chart.Legends.Clear();     //凡例
+
+            string chart_area1 = "Area1";
+            記録＿chart.ChartAreas.Add(new ChartArea(chart_area1));
+
+            string legend1 = "Graph1";
+            記録＿chart.Series.Add(legend1);
+
+            記録＿chart.Series[legend1].ChartType = SeriesChartType.Column;
+            記録＿chart.Series[legend1].Color = Color.FromArgb(65, 143, 102);
+            記録＿chart.Series[legend1].IsValueShownAsLabel = true;
+            //chart1.ChartAreas[0].AxisX.Maximum = 20;
+            記録＿chart.ChartAreas[0].AxisX.Minimum = 0;
+            記録＿chart.ChartAreas[0].AxisX.Interval = 1;
+            記録＿chart.ChartAreas[0].AxisX.MajorGrid.Enabled = false;
+
+            int ref_deg = 0;
+
+            if (jointname == "股関節屈曲")
+            {
+                記録＿chart.ChartAreas[0].AxisY.Maximum = 140;
+                記録＿chart.ChartAreas[0].AxisY.Minimum = 50;
+                記録＿chart.ChartAreas[0].AxisY.Interval = 10;
+                ref_deg = 125;
+            }
+            else if (jointname == "膝関節屈曲")
+            {
+                記録＿chart.ChartAreas[0].AxisY.Maximum = 150;
+                記録＿chart.ChartAreas[0].AxisY.Minimum = 60;
+                記録＿chart.ChartAreas[0].AxisY.Interval = 10;
+                ref_deg = 130;
+            }
+            else if (jointname == "足関節屈曲")
+            {
+                記録＿chart.ChartAreas[0].AxisY.Maximum = 50;
+                記録＿chart.ChartAreas[0].AxisY.Minimum = 0;
+                記録＿chart.ChartAreas[0].AxisY.Interval = 10;
+                ref_deg = 20;
+            }
+            else if (jointname == "足関節伸展")
+            {
+                記録＿chart.ChartAreas[0].AxisY.Maximum = 60;
+                記録＿chart.ChartAreas[0].AxisY.Minimum = 0;
+                記録＿chart.ChartAreas[0].AxisY.Interval = 10;
+                ref_deg = 45;
+            }
+
+            記録＿chart.ChartAreas[0].AxisY.MajorGrid.LineColor = Color.Gray;
+            記録＿chart.ChartAreas[0].AxisY.MajorGrid.LineDashStyle = ChartDashStyle.Dot;
+
+            StreamReader sr = new System.IO.StreamReader(@"C:\Users\mukai\Desktop\result\" + 名前入力フォーム.Text + " " + jointname + ".txt");
+
+            string line = "";
+            List<string> list = new List<string>();
+            int length = 0;
+
+            // test.txtを1行ずつ読み込んでいき、末端(何もない行)までwhile文で繰り返す
+            while ((line = sr.ReadLine()) != null)
+            {
+                list.Add(line);
+                length++;
+            }
+
+            記録＿chart.ChartAreas[0].AxisX.Maximum = length + 1;
+            var series = new Series();
+            for (int i = 0; i < length; i++)
+            {
+                記録＿chart.Series[0].Points.AddY(list[i]);
+            }
+            記録＿chart.Series[0].Points[length - 1].Color = Color.Red; // ここで最後のグラフの色を変更
+            記録＿chart.Series[0].Points.AddY(series[0]);
+
+            //分布図 
+            Series series_spraying = new Series("basic");
+            {
+                series_spraying.ChartType = SeriesChartType.Line;//グラフのスタイル
+                series_spraying.Color = Color.OrangeRed;
+                series_spraying.BorderWidth = 3;
+                series_spraying.BorderDashStyle = ChartDashStyle.Dash;
+
+                StripLine stlipLine = new StripLine
+                {
+                    Text = $"参考可動域:{ref_deg}",
+                    TextAlignment = StringAlignment.Near,     // テキストの水平位置（Near:左, Center:中央, Far:右）
+                    TextLineAlignment = StringAlignment.Far,  // テキストの垂直位置（Near:下, Center:中央, Far:上）
+                    Interval = 0,                             // 線分の表示間隔 値を設定すると指定した間隔で表示される。
+                    IntervalOffset = ref_deg,                 // 線分の表示オフセット
+                    BorderWidth = 3,
+                    BorderDashStyle = ChartDashStyle.DashDot,
+                    BorderColor = Color.Red,
+                };
+                記録＿chart.ChartAreas[0].AxisY.StripLines.Add(stlipLine);
+
+            }
+            記録＿chart.Series.Add(series_spraying);
+
+            wizardControl1.SelectedIndex = 4;//ページの遷移
+        }
+
+        private void 新しく測定する_Click(object sender, EventArgs e)
+        {
+            wizardControl1.SelectedIndex = 1;//ページの遷移
+        }
+
+        private void メインに戻る_Click(object sender, EventArgs e)
+        {
+            wizardControl1.SelectedIndex = 0;//ページの遷移
+        }
+
+//////////記録画面//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        private void メインへ_Click(object sender, EventArgs e)
+        {
+            wizardControl1.SelectedIndex = 0;//ページの遷移
+        }
+
+        private void 関節選択＿comboBox_SelectedIndexChanged(object sender, EventArgs e)
+        {
+
+            記録＿chart.ChartAreas.Clear();  //描画領域
+            記録＿chart.Series.Clear();      //データ・色・種類等
+            記録＿chart.Legends.Clear();     //凡例
+
+            string chart_area1 = "Area1";
+            記録＿chart.ChartAreas.Add(new ChartArea(chart_area1));
+
+            string legend1 = "Graph1";//グラフ最後前まで
+            記録＿chart.Series.Add(legend1);
+
+            //グラフ最後前
+            記録＿chart.Series[legend1].ChartType = SeriesChartType.Column;
+            記録＿chart.Series[legend1].Color = Color.Gray;
+            記録＿chart.Series[legend1].IsValueShownAsLabel = true;
+            //チャート設定
+            記録＿chart.ChartAreas[0].AxisX.Minimum = 0;
+            記録＿chart.ChartAreas[0].AxisX.Interval = 1;
+            記録＿chart.ChartAreas[0].AxisX.MajorGrid.Enabled = false;
+
+            int ref_deg = 0;
+
+            if (関節選択＿comboBox.Text == "股関節屈曲")
+            {
+                記録＿chart.ChartAreas[0].AxisY.Maximum = 140;
+                記録＿chart.ChartAreas[0].AxisY.Minimum = 50;
+                記録＿chart.ChartAreas[0].AxisY.Interval = 10;
+                ref_deg = 125;
+            }
+            else if (関節選択＿comboBox.Text == "膝関節屈曲")
+            {
+                記録＿chart.ChartAreas[0].AxisY.Maximum = 150;
+                記録＿chart.ChartAreas[0].AxisY.Minimum = 60;
+                記録＿chart.ChartAreas[0].AxisY.Interval = 10;
+                ref_deg = 130;
+            }
+            else if (関節選択＿comboBox.Text == "足関節屈曲")
+            {
+                記録＿chart.ChartAreas[0].AxisY.Maximum = 60;
+                記録＿chart.ChartAreas[0].AxisY.Minimum = 0;
+                記録＿chart.ChartAreas[0].AxisY.Interval = 10;
+                ref_deg = 20;
+
+            }
+            記録＿chart.Series[legend1].Color = Color.FromArgb(65, 143, 102);
+            記録＿chart.ChartAreas[0].AxisY.MajorGrid.LineDashStyle = ChartDashStyle.Dot;
+
+            //StreamReader sr = new System.IO.StreamReader(@"C:\Users\mukai\Desktop\result\" + 名前入力フォーム.Text + " " + 関節選択＿comboBox.Text + ".txt");
+            StreamReader sr = new System.IO.StreamReader(@"C:\Users\mukai\Desktop\result\新しいテキスト ドキュメント.txt");
+            //string line = "";
+            //List<string> list = new List<string>();         //空のListを作成する
+            int length = 0;
+
+            string textall = sr.ReadToEnd();
+            string[] list = textall.Split(',');
+
+            // test.txtを1行ずつ読み込んでいき、末端(何もない行)までwhile文で繰り返す
+            //textall = sr.ReadToEnd();
+
+
+            記録＿chart.ChartAreas[0].AxisX.Maximum = list.Length-0.1 ;
+
+            var series = new Series();
+
+            for (int i = 0; i < list.Length - 1; i++)
+            {
+                記録＿chart.Series[0].Points.AddY(list[i]);
+            }
+
+            記録＿chart.Series[0].Points[list.Length - 2].Color = Color.Red; // ここで最後のグラフの色を変更
+            記録＿chart.Series[0].Points.AddY(series[0]);
+
+            //分布図 
+            Series series_spraying = new Series("basic");
+            {
+                series_spraying.ChartType = SeriesChartType.Line;//グラフのスタイル
+                series_spraying.Color = Color.OrangeRed;
+                series_spraying.BorderWidth = 3;
+                series_spraying.BorderDashStyle = ChartDashStyle.Dash;
+
+
+                StripLine stlipLine = new StripLine
+                {
+                    Text = $"参考可動域:{ref_deg}",
+                    TextAlignment = StringAlignment.Near,     // テキストの水平位置（Near:左, Center:中央, Far:右）
+                    TextLineAlignment = StringAlignment.Far,  // テキストの垂直位置（Near:下, Center:中央, Far:上）
+                    Interval = 0,                             // 線分の表示間隔 値を設定すると指定した間隔で表示される。
+                    IntervalOffset = ref_deg,                 // 線分の表示オフセット
+                    BorderWidth = 3,
+                    BorderDashStyle = ChartDashStyle.DashDot,
+                    BorderColor = Color.Red,
+                };
+                記録＿chart.ChartAreas[0].AxisY.StripLines.Add(stlipLine);
+
+
+                //for (int j = -1; j < length; j++)
+                //{
+                //    series_spraying.Points.AddY(ref_deg);
+                //}
+
+            }
+            記録＿chart.Series.Add(series_spraying);
+        }
+
+    }
+    public partial class WizardControl : TabControl
+    {
+        // デザイナ画面以外でタブを消す
+        protected override void WndProc(ref Message m)
+        {
+            if (m.Msg == 0x1328 && !DesignMode) m.Result = (IntPtr)1;
+            else base.WndProc(ref m);
+        }
+
+        // Ctrl+Tab で遷移できなくする
+        protected override void OnKeyDown(KeyEventArgs e)
+        {
+            if (e.Control && e.KeyCode == Keys.Tab) return;
+            base.OnKeyDown(e);
+
+        }
+
+        //←→キーの無効
+        private void dataGridView1_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.Right || e.KeyData == Keys.Left)
+                e.Handled = true;
+        }
+
+    }
+}
