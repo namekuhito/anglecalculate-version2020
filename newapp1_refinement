@@ -1,27 +1,56 @@
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
 using System.Drawing;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.Diagnostics;
 using System.IO;
 using System.Windows.Forms.DataVisualization.Charting;
+using Newtonsoft.Json;
 
 namespace newapp1
 {
     public partial class Form1 : Form
     {
+        // JSON用にclassを定義
+        public class Person
+        {
+            public List<double> pose_keypoints_2d { get; set; }
+            public List<object> face_keypoints_2d { get; set; }
+            public List<object> hand_left_keypoints_2d { get; set; }
+            public List<object> hand_right_keypoints_2d { get; set; }
+            public List<object> pose_keypoints_3d { get; set; }
+            public List<object> face_keypoints_3d { get; set; }
+            public List<object> hand_left_keypoints_3d { get; set; }
+            public List<object> hand_right_keypoints_3d { get; set; }
+            //public string remote_address { get; set; }
+        }
+        public class RootObject
+        {
+            public double version { get; set; }
+            public List<Person> people { get; set; }
+        }
+
+
+        string pathgazouname;//JSONファイルから特定した画像
         string jointnumber;
         string fname;
         string jointname;
+        //股関節屈曲
+        double kosi_hidari_kakuritu = 0.1;
+        double hiza_hidari_kakuritu = 0.1;
+        //膝関節屈曲
+        double asikubi_hidari_kakuritu = 0.1;
+        //足関節屈曲
+        double oyayubi_hidari_kakuritu = 0.1;
+        double kakato_hidari_kakuritu = 0.1;
+        //足関節伸展
 
         public Form1()
         {
             InitializeComponent();
+            InitializeChartArea();
 
             股関節屈曲.Image = Image.FromFile("C:\\Users\\mukai\\Desktop\\リンゴ\\股関節屈曲.jpg");//股関節屈曲アイコン追加
             膝関節屈曲.Image = Image.FromFile("C:\\Users\\mukai\\Desktop\\リンゴ\\膝関節屈曲.jpg");//膝関節屈曲アイコン追加
@@ -33,98 +62,126 @@ namespace newapp1
 
         private void Form1_Load(object sender, EventArgs e)
         {
-            関節名＿label.Text = "股関節屈曲";//default
+            //関節名＿label.Text = "股関節屈曲";//default
             関節選択＿comboBox.Items.Add("股関節屈曲");
             関節選択＿comboBox.Items.Add("膝関節屈曲");
             関節選択＿comboBox.Items.Add("足関節屈曲");
+            関節選択＿comboBox.Items.Add("股関節伸展");
+            関節選択＿comboBox.Items.Add("膝関節伸展");
+            関節選択＿comboBox.Items.Add("足関節伸展");
         }
 
 //////////メイン画面//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
         private void クリア_Click(object sender, EventArgs e)
         {
-            名前入力フォーム.ResetText();//名前入力フォームのクリア
+            //MessageBox.Show("計測中");
+            //Console.Beep(500, 500);
+            //Console.Beep(500, 500);
+            //MessageBox.Show("成功音");
+            //Console.Beep(3000, 700);// 成功音
+            //Console.Beep(3000, 1000);// 成功音
+            //bool boolflag = File.Exists(@"C:Users\mukai\Desktop\result\baka.txt");
+            //if (boolflag==true)
+            //{
+            //    MessageBox.Show("存在する");
+            //}
+            //else
+            //{
+            //    MessageBox.Show("存在しない");
+            //}
+
+
+            // 名前入力フォームのクリア
+            名前入力フォーム.ResetText();
         }
 
         private void 開始_Click(object sender, EventArgs e)
         {
-            //画像フォルダの初期化
+            // 画像フォルダの初期化
             pictureBox1.Image = null;
-            if (System.IO.Directory.Exists(@"C:\openpose-build\x64\newmedia"))
-            {
-                System.IO.Directory.Delete(@"C:\openpose-build\x64\newmedia", true);
-            }
+            //if (Directory.Exists(@"C:\openpose-build\x64\newmedia"))
+            //{
+            //    Directory.Delete(@"C:\openpose-build\x64\newmedia", true);
+            //}
+            // 名前リセット
+            被験者名前＿label.ResetText();
+            // 関節名リセット
+            関節名＿label.ResetText();
 
-            if (System.IO.Directory.Exists(@"C:\openpose-build\x64\result_json"))
-            {
-                System.IO.Directory.Delete(@"C:\openpose-build\x64\result_json", true);
-            }
-
-            被験者名前＿label.ResetText(); //名前リセット
-            関節名＿label.ResetText(); //関節名リセット
-
-            if (名前入力フォーム.Text == "") MessageBox.Show("名前が入力されていません。",
-            "エラー", MessageBoxButtons.OK, MessageBoxIcon.Error); //名前入力フォームに名前がないと警告
+            if (名前入力フォーム.Text == "") MessageBox.Show("名前が入力されていません。\n記録が保存・参照できません。",
+            "エラー", MessageBoxButtons.OK, MessageBoxIcon.Exclamation); //名前入力フォームに名前がないと警告
 
             被験者名前＿label.Text = 名前入力フォーム.Text; //名前をメインメニューで入力されたものにする
-
-            wizardControl1.SelectedIndex = 1; //ページの遷移
+            
+            // ページの遷移
+            wizardControl1.SelectedIndex = 1;
         }
 
         private void 記録_Click(object sender, EventArgs e)
         {
+            // 名前入力フォームに名前がないと警告、ページは遷移しない
             if (名前入力フォーム.Text == "") MessageBox.Show("名前が入力されていません。",
-            "エラー", MessageBoxButtons.OK, MessageBoxIcon.Error); //名前入力フォームに名前がないと警告
+            "エラー", MessageBoxButtons.OK, MessageBoxIcon.Error); 
             else
             {
-                wizardControl1.SelectedIndex = 4; //ページの遷移
+                // ページの遷移
+                wizardControl1.SelectedIndex = 4;
             }
         }
 
         private void 使用方法_Click(object sender, EventArgs e)
         {
-            MessageBox.Show("現在選択できません。",
-            "エラー",MessageBoxButtons.OK,MessageBoxIcon.Error);
+            // ページの遷移
+            wizardControl1.SelectedIndex = 5;
         }
 
         private void 終了_Click(object sender, EventArgs e)
         {
-            Application.Exit(); //アプリケーションの終了
+            // アプリケーションの終了
+            Application.Exit(); 
         }
 
 //////////測定関節選択画面//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
         private void 戻る＿測定関節選択画面_Click(object sender, EventArgs e)
         {
-            wizardControl1.SelectedIndex = 0;//ページの遷移
+            // ページの遷移
+            wizardControl1.SelectedIndex = 0;
         }
 
         private void 股関節屈曲_Click(object sender, EventArgs e)
         {
-            jointnumber = ("1");        //jointnumberはC++計算プログラムに渡す引数
+            // jointnumberはC++計算プログラムに渡す引数
+            jointnumber = ("1");        
             jointname = "股関節屈曲";
             関節名＿label.Text = jointname + "　　[参考可動域] 125度";
-
-            wizardControl1.SelectedIndex = 2; //ページの遷移
+            参考関節可動域＿label.Text = "[参考可動域] 125度";
+            // ページの遷移
+            wizardControl1.SelectedIndex = 2; 
         }
 
         private void 膝関節屈曲_Click(object sender, EventArgs e)
         {
-            jointnumber = ("2");        //jointnumberはC++計算プログラムに渡す引数
+            // jointnumberはC++計算プログラムに渡す引数
+            jointnumber = ("2");        
             jointname = "膝関節屈曲";
             関節名＿label.Text = jointname + "　　[参考可動域] 130度";
-
-            wizardControl1.SelectedIndex = 2; //ページの遷移
+            参考関節可動域＿label.Text = "[参考可動域] 130度";
+            // ページの遷移
+            wizardControl1.SelectedIndex = 2; 
 
         }
 
         private void 足関節屈曲_Click(object sender, EventArgs e)
         {
-            jointnumber = ("3");        //jointnumberはC++計算プログラムに渡す引数
+            // jointnumberはC++計算プログラムに渡す引数
+            jointnumber = ("3");        
             jointname = "足関節屈曲";
             関節名＿label.Text = jointname + "　　[参考可動域] 45度";
-
-            wizardControl1.SelectedIndex = 2; //ページの遷移
+            参考関節可動域＿label.Text = "[参考可動域] 45度";
+            // ページの遷移
+            wizardControl1.SelectedIndex = 2; 
 
         }
 
@@ -142,11 +199,13 @@ namespace newapp1
 
         private void 足関節伸展_Click(object sender, EventArgs e)
         {
-            jointnumber = ("6");        //jointnumberはC++計算プログラムに渡す引数
+            // jointnumberはC++計算プログラムに渡す引数
+            jointnumber = ("6");        
             jointname = "足関節伸展";
             関節名＿label.Text = jointname + "　　[参考可動域] 20度";
-
-            wizardControl1.SelectedIndex = 2;//ページの遷移
+            参考関節可動域＿label.Text = "[参考可動域] 20度";
+            // ページの遷移
+            wizardControl1.SelectedIndex = 2;
 
         }
 
@@ -154,9 +213,517 @@ namespace newapp1
 
         private void 写真を撮影する_Click(object sender, EventArgs e)
         {
-           MessageBox.Show("現在選択できません。",
-           "エラー",
-           MessageBoxButtons.OK, MessageBoxIcon.Error);
+            // result_json_realtimeファイルの内部を削除する
+            DirectoryInfo target1 = new DirectoryInfo(@"C:\openpose-build\x64\result_json_realtime\");
+            // ファイル消す(フォルダは残る)
+            foreach (FileInfo file1 in target1.GetFiles())
+            {
+                file1.Delete();
+            }
+            // result_gazouファイルの内部を削除する
+            DirectoryInfo target2 = new DirectoryInfo(@"C:\openpose-build\x64\result_gazou\");
+            // ファイル消す(フォルダは残る)
+            foreach (FileInfo file2 in target2.GetFiles())
+            {
+                file2.Delete();
+            }
+            // newmediaファイルの内部を削除する
+            DirectoryInfo target3 = new DirectoryInfo(@"C:\openpose-build\x64\newmedia\");
+            // ファイル消す(フォルダは残る)
+            foreach (FileInfo file3 in target3.GetFiles())
+            {
+                file3.Delete();
+            }
+            //OpenPoseを起動
+            Process openpose = new Process();
+            openpose.StartInfo.FileName = "Release\\OpenPoseDemo.exe";
+            //openpose.StartInfo.Arguments = "--process_real_time --write_json result_json";
+            openpose.StartInfo.Arguments = "--camera 0 --write_images result_gazou --write_json result_json_realtime --number_people_max 1 --logging_level 3";// --net_resolution 1600x1216
+            openpose.StartInfo.ErrorDialog = true;
+            openpose.StartInfo.WindowStyle = ProcessWindowStyle.Hidden;
+
+            openpose.Start();// OpenPose実行
+            // 待機7秒間 最低でも6秒は必要
+            System.Threading.Thread.Sleep(7000);
+            //openpose.WaitForExit(); // OpenPose終了まで待機
+
+
+            // 測定関節選択画面にて選択した関節に応じて、スイッチ文を用いて場合分け
+            switch (jointnumber)
+            {
+                case "1":// 股関節屈曲 12 左腰、13 左膝
+                    for (;;)
+                    {
+                        //ファイルの読み込みと信頼値の判定  
+                        try// 信頼値の判定をtry文にて実行
+                        {
+                            // JSONフォルダ内の最新のファイルの取得
+                            var jsonfilepath = @"C:\openpose-build\x64\result_json_realtime\";//取得するファルダ名の確定            
+                            // 指定されたフォルダ内のjsonファイル名をすべて取得する
+                            string[] lastfiles = Directory.GetFiles(jsonfilepath, "*.json", SearchOption.TopDirectoryOnly);
+                            string newestFileName = string.Empty;
+                            DateTime updateTime1 = DateTime.MinValue;
+                            foreach (string file in lastfiles)
+                            {
+                                // それぞれのファイルの更新日付を取得する
+                                FileInfo fi = new FileInfo(file);
+                                // 更新日付が最新なら更新日付とファイル名を保存する
+                                if (fi.LastWriteTime > updateTime1)
+                                {
+                                    updateTime1 = fi.LastWriteTime;
+                                    newestFileName = file;
+                                    //MessageBox.Show("更新"+newestFileName.ToString());
+                                }
+                                // 前回のデータを反映
+                                else
+                                {
+                                    //newestFileName = newestFileName;
+                                    //newestFileName = file;
+                                }
+                            }
+                            var name = Path.GetFileName(newestFileName);//最新のファイル名をnameに代入
+                            //MessageBox.Show(name.ToString());//最新のファイル名を表示
+                            //var flwt = File.GetLastWriteTime(jsonfilepath);
+                            //MessageBox.Show(flwt.ToString());
+                            var x = (1).ToString("D12");//Dで桁数を確定
+                            //MessageBox.Show(x.ToString());
+                            string pathname = @"C:\openpose-build\x64\result_json_realtime\" + name.ToString();//ファイル名を確定
+                            //MessageBox.Show(pathname.ToString());
+                            // ファイルの読み込み
+                            if (File.ReadAllText(pathname) == null) MessageBox.Show("ファイルなし");
+                            string jsondata = File.ReadAllText(pathname);
+                            RootObject rootObject = JsonConvert.DeserializeObject<RootObject>(jsondata);// 取得するJSONファイルを格納
+                            //MessageBox.Show(rootObject.people[0].ToString());
+                            //MessageBox.Show(rootObject.people[0].pose_keypoints_2d[41].ToString());//1人目の41番目のデータ
+
+                            var kosi_migi = rootObject.people[0].pose_keypoints_2d[29];
+                            var hiza_migi = rootObject.people[0].pose_keypoints_2d[32];
+                            var kosi_hidari = rootObject.people[0].pose_keypoints_2d[38];//
+                            var hiza_hidari = rootObject.people[0].pose_keypoints_2d[41];//
+                            var asikubi_hidari = rootObject.people[0].pose_keypoints_2d[44];
+                            var oyayubi_hidari = rootObject.people[0].pose_keypoints_2d[59];
+                            var kakato_hidari = rootObject.people[0].pose_keypoints_2d[65];
+
+                            // 信頼値の判定　膝関節
+                            if (kosi_hidari > kosi_hidari_kakuritu && hiza_hidari > hiza_hidari_kakuritu)
+                            {
+                                // 取得するJSONファイルを001_keypoints.jsonとして保存する
+                                File.Copy(pathname, @"C:\openpose-build\x64\result_json_realtime\001_keypoints.json");
+                                // JSONファイルから画像名を特定する
+                                string gazou = name.Replace("keypoints.json", "rendered.png");
+                                //MessageBox.Show(gazou.ToString());
+                                pathgazouname = @"C:\openpose-build\x64\result_gazou\" + gazou.ToString();//画像ファイル名を確定
+                                //MessageBox.Show(pathgazouname.ToString());
+                                File.Copy(pathgazouname, @"C:\openpose-build\x64\newmedia\001.png");
+                                //if (File.Exists(pathgazouname)) MessageBox.Show("ある");
+                                //角度計算を行うＣ++プログラムのパラメータセット
+                                Process calculate = new Process();
+                                calculate.StartInfo.FileName = "20180906_.exe";
+                                calculate.StartInfo.Arguments = jointnumber;
+                                calculate.StartInfo.CreateNoWindow = true;
+                                calculate.StartInfo.ErrorDialog = true;
+                                calculate.StartInfo.WindowStyle = ProcessWindowStyle.Hidden;
+
+                                //角度計算プログラムを実行し、終了まで待機
+                                calculate.Start();
+                                calculate.WaitForExit();
+
+                                //今回日時
+                                今回記録日時＿label.Text = updateTime1.ToString("yyyy年MM月dd日 HH時mm分");
+                                // 角度の表示
+                                測定角度＿label.Text = calculate.ExitCode.ToString() + "度";
+
+                                // 成功音
+                                Console.Beep(3000, 700);
+                                Console.Beep(3000, 1000);
+
+                                break;
+                            }
+
+                        }
+                        catch// すべての例外に対応
+                        {
+                            // この音が鳴っている間は計測中の合図
+                            Console.Beep(500, 500);
+                        }
+                    }
+                    break;
+                    
+                case "2":// 膝関節屈曲　12 左腰、13 左膝、14 左足首
+                    for (;;)
+                    {
+                        //ファイルの読み込みと信頼値の判定  
+                        try// 信頼値の判定をtry文にて実行
+                        {
+                            // JSONフォルダ内の最新のファイルの取得
+                            var jsonfilepath = @"C:\openpose-build\x64\result_json_realtime\";//取得するファルダ名の確定            
+                            // 指定されたフォルダ内のjsonファイル名をすべて取得する
+                            string[] lastfiles = Directory.GetFiles(jsonfilepath, "*.json", SearchOption.TopDirectoryOnly);
+                            string newestFileName = string.Empty;
+                            DateTime updateTime1 = DateTime.MinValue;
+                            foreach (string file in lastfiles)
+                            {
+                                // それぞれのファイルの更新日付を取得する
+                                FileInfo fi = new FileInfo(file);
+                                // 更新日付が最新なら更新日付とファイル名を保存する
+                                if (fi.LastWriteTime > updateTime1)
+                                {
+                                    updateTime1 = fi.LastWriteTime;
+                                    newestFileName = file;
+                                    //MessageBox.Show("更新"+newestFileName.ToString());
+                                }
+                                // 前回のデータを反映
+                                else
+                                {
+                                    //newestFileName = newestFileName;
+                                    //newestFileName = file;
+                                }
+                            }
+                            var name = Path.GetFileName(newestFileName);//最新のファイル名をnameに代入
+                            //MessageBox.Show(name.ToString());//最新のファイル名を表示
+                            //var flwt = File.GetLastWriteTime(jsonfilepath);
+                            //MessageBox.Show(flwt.ToString());
+                            var x = (1).ToString("D12");//Dで桁数を確定
+                            //MessageBox.Show(x.ToString());
+                            string pathname = @"C:\openpose-build\x64\result_json_realtime\" + name.ToString();//ファイル名を確定
+                            //MessageBox.Show(pathname.ToString());
+                            // ファイルの読み込み
+                            if (File.ReadAllText(pathname) == null) MessageBox.Show("ファイルなし");
+                            string jsondata = File.ReadAllText(pathname);
+                            RootObject rootObject = JsonConvert.DeserializeObject<RootObject>(jsondata);// 取得するJSONファイルを格納
+                            //MessageBox.Show(rootObject.people[0].ToString());
+                            //MessageBox.Show(rootObject.people[0].pose_keypoints_2d[41].ToString());//1人目の41番目のデータ
+
+                            var kosi_migi = rootObject.people[0].pose_keypoints_2d[29];
+                            var hiza_migi = rootObject.people[0].pose_keypoints_2d[32];
+                            var kosi_hidari = rootObject.people[0].pose_keypoints_2d[38];//
+                            var hiza_hidari = rootObject.people[0].pose_keypoints_2d[41];//
+                            var asikubi_hidari = rootObject.people[0].pose_keypoints_2d[44];//
+                            var oyayubi_hidari = rootObject.people[0].pose_keypoints_2d[59];
+                            var kakato_hidari = rootObject.people[0].pose_keypoints_2d[65];
+
+                            // 信頼値の判定　膝関節
+                            if (kosi_hidari > kosi_hidari_kakuritu && hiza_hidari > hiza_hidari_kakuritu && asikubi_hidari > asikubi_hidari_kakuritu)
+                            {
+                                // 取得するJSONファイルを001_keypoints.jsonとして保存する
+                                File.Copy(pathname, @"C:\openpose-build\x64\result_json_realtime\001_keypoints.json");
+                                // JSONファイルから画像名を特定する
+                                string gazou = name.Replace("keypoints.json", "rendered.png");
+                                //MessageBox.Show(gazou.ToString());
+                                pathgazouname = @"C:\openpose-build\x64\result_gazou\" + gazou.ToString();//画像ファイル名を確定
+                                //MessageBox.Show(pathgazouname.ToString());
+                                File.Copy(pathgazouname, @"C:\openpose-build\x64\newmedia\001.png");
+                                //if (File.Exists(pathgazouname)) MessageBox.Show("ある");
+                                //角度計算を行うＣ++プログラムのパラメータセット
+                                Process calculate = new Process();
+                                calculate.StartInfo.FileName = "20180906_.exe";
+                                calculate.StartInfo.Arguments = jointnumber;
+                                calculate.StartInfo.CreateNoWindow = true;
+                                calculate.StartInfo.ErrorDialog = true;
+                                calculate.StartInfo.WindowStyle = ProcessWindowStyle.Hidden;
+
+                                //角度計算プログラムを実行し、終了まで待機
+                                calculate.Start();
+                                calculate.WaitForExit();
+
+                                //今回日時
+                                今回記録日時＿label.Text = updateTime1.ToString("yyyy年MM月dd日 HH時mm分");
+                                // 角度の表示
+                                測定角度＿label.Text = calculate.ExitCode.ToString() + "度";
+
+                                // 成功音
+                                Console.Beep(3000, 700);
+                                Console.Beep(3000, 1000);
+
+                                break;
+                            }
+                            
+                        }
+                        catch// すべての例外に対応
+                        {
+                            // この音が鳴っている間は計測中の合図
+                            Console.Beep(500, 500);
+                        }
+                    }
+                    break;
+                    
+                case "3":// 足関節屈曲 13 左膝、19 左足親指、21 左踵
+                    for (;;)
+                    {
+                        //ファイルの読み込みと信頼値の判定  
+                        try// 信頼値の判定をtry文にて実行
+                        {
+                            // JSONフォルダ内の最新のファイルの取得
+                            var jsonfilepath = @"C:\openpose-build\x64\result_json_realtime\";//取得するファルダ名の確定            
+                            // 指定されたフォルダ内のjsonファイル名をすべて取得する
+                            string[] lastfiles = Directory.GetFiles(jsonfilepath, "*.json", SearchOption.TopDirectoryOnly);
+                            string newestFileName = string.Empty;
+                            DateTime updateTime1 = DateTime.MinValue;
+                            foreach (string file in lastfiles)
+                            {
+                                // それぞれのファイルの更新日付を取得する
+                                FileInfo fi = new FileInfo(file);
+                                // 更新日付が最新なら更新日付とファイル名を保存する
+                                if (fi.LastWriteTime > updateTime1)
+                                {
+                                    updateTime1 = fi.LastWriteTime;
+                                    newestFileName = file;
+                                    //MessageBox.Show("更新"+newestFileName.ToString());
+                                }
+                                // 前回のデータを反映
+                                else
+                                {
+                                    //newestFileName = newestFileName;
+                                    //newestFileName = file;
+                                }
+                            }
+                            var name = Path.GetFileName(newestFileName);//最新のファイル名をnameに代入
+                            //MessageBox.Show(name.ToString());//最新のファイル名を表示
+                            //var flwt = File.GetLastWriteTime(jsonfilepath);
+                            //MessageBox.Show(flwt.ToString());
+                            var x = (1).ToString("D12");//Dで桁数を確定
+                            //MessageBox.Show(x.ToString());
+                            string pathname = @"C:\openpose-build\x64\result_json_realtime\" + name.ToString();//ファイル名を確定
+                            //MessageBox.Show(pathname.ToString());
+                            // ファイルの読み込み
+                            if (File.ReadAllText(pathname) == null) MessageBox.Show("ファイルなし");
+                            string jsondata = File.ReadAllText(pathname);
+                            RootObject rootObject = JsonConvert.DeserializeObject<RootObject>(jsondata);// 取得するJSONファイルを格納
+                            //MessageBox.Show(rootObject.people[0].ToString());
+                            //MessageBox.Show(rootObject.people[0].pose_keypoints_2d[41].ToString());//1人目の41番目のデータ
+
+                            var kosi_migi = rootObject.people[0].pose_keypoints_2d[29];
+                            var hiza_migi = rootObject.people[0].pose_keypoints_2d[32];
+                            var kosi_hidari = rootObject.people[0].pose_keypoints_2d[38];
+                            var hiza_hidari = rootObject.people[0].pose_keypoints_2d[41];//
+                            var asikubi_hidari = rootObject.people[0].pose_keypoints_2d[44];
+                            var oyayubi_hidari = rootObject.people[0].pose_keypoints_2d[59];//
+                            var kakato_hidari = rootObject.people[0].pose_keypoints_2d[65];//
+
+                            // 信頼値の判定　膝関節
+                            if (hiza_hidari > hiza_hidari_kakuritu && oyayubi_hidari > oyayubi_hidari_kakuritu && kakato_hidari > kakato_hidari_kakuritu)
+                            {
+                                // 取得するJSONファイルを001_keypoints.jsonとして保存する
+                                File.Copy(pathname, @"C:\openpose-build\x64\result_json_realtime\001_keypoints.json");
+                                // JSONファイルから画像名を特定する
+                                string gazou = name.Replace("keypoints.json", "rendered.png");
+                                //MessageBox.Show(gazou.ToString());
+                                pathgazouname = @"C:\openpose-build\x64\result_gazou\" + gazou.ToString();//画像ファイル名を確定
+                                //MessageBox.Show(pathgazouname.ToString());
+                                File.Copy(pathgazouname, @"C:\openpose-build\x64\newmedia\001.png");
+                                //if (File.Exists(pathgazouname)) MessageBox.Show("ある");
+                                //角度計算を行うＣ++プログラムのパラメータセット
+                                Process calculate = new Process();
+                                calculate.StartInfo.FileName = "20180906_.exe";
+                                calculate.StartInfo.Arguments = jointnumber;
+                                calculate.StartInfo.CreateNoWindow = true;
+                                calculate.StartInfo.ErrorDialog = true;
+                                calculate.StartInfo.WindowStyle = ProcessWindowStyle.Hidden;
+
+                                //角度計算プログラムを実行し、終了まで待機
+                                calculate.Start();
+                                calculate.WaitForExit();
+
+                                //今回日時
+                                今回記録日時＿label.Text = updateTime1.ToString("yyyy年MM月dd日 HH時mm分");
+                                // 角度の表示
+                                測定角度＿label.Text = calculate.ExitCode.ToString() + "度";
+
+                                // 成功音
+                                Console.Beep(3000, 700);
+                                Console.Beep(3000, 1000);
+
+                                break;
+                            }
+
+                        }
+                        catch// すべての例外に対応
+                        {
+                            // この音が鳴っている間は計測中の合図
+                            Console.Beep(500, 500);
+                        }
+                    }
+                    break;
+                    
+                case "6":// 足関節伸展 13 左膝、19 左足親指、21 左踵
+                    for (;;)
+                    {
+                        //ファイルの読み込みと信頼値の判定  
+                        try// 信頼値の判定をtry文にて実行
+                        {
+                            // JSONフォルダ内の最新のファイルの取得
+                            var jsonfilepath = @"C:\openpose-build\x64\result_json_realtime\";//取得するファルダ名の確定            
+                            // 指定されたフォルダ内のjsonファイル名をすべて取得する
+                            string[] lastfiles = Directory.GetFiles(jsonfilepath, "*.json", SearchOption.TopDirectoryOnly);
+                            string newestFileName = string.Empty;
+                            DateTime updateTime1 = DateTime.MinValue;
+                            foreach (string file in lastfiles)
+                            {
+                                // それぞれのファイルの更新日付を取得する
+                                FileInfo fi = new FileInfo(file);
+                                // 更新日付が最新なら更新日付とファイル名を保存する
+                                if (fi.LastWriteTime > updateTime1)
+                                {
+                                    updateTime1 = fi.LastWriteTime;
+                                    newestFileName = file;
+                                    //MessageBox.Show("更新"+newestFileName.ToString());
+                                }
+                                // 前回のデータを反映
+                                else
+                                {
+                                    //newestFileName = newestFileName;
+                                    //newestFileName = file;
+                                }
+                            }
+                            var name = Path.GetFileName(newestFileName);//最新のファイル名をnameに代入
+                            //MessageBox.Show(name.ToString());//最新のファイル名を表示
+                            //var flwt = File.GetLastWriteTime(jsonfilepath);
+                            //MessageBox.Show(flwt.ToString());
+                            var x = (1).ToString("D12");//Dで桁数を確定
+                            //MessageBox.Show(x.ToString());
+                            string pathname = @"C:\openpose-build\x64\result_json_realtime\" + name.ToString();//ファイル名を確定
+                            //MessageBox.Show(pathname.ToString());
+                            // ファイルの読み込み
+                            if (File.ReadAllText(pathname) == null) MessageBox.Show("ファイルなし");
+                            string jsondata = File.ReadAllText(pathname);
+                            RootObject rootObject = JsonConvert.DeserializeObject<RootObject>(jsondata);// 取得するJSONファイルを格納
+                            //MessageBox.Show(rootObject.people[0].ToString());
+                            //MessageBox.Show(rootObject.people[0].pose_keypoints_2d[41].ToString());//1人目の41番目のデータ
+
+                            var kosi_migi = rootObject.people[0].pose_keypoints_2d[29];
+                            var hiza_migi = rootObject.people[0].pose_keypoints_2d[32];
+                            var kosi_hidari = rootObject.people[0].pose_keypoints_2d[38];
+                            var hiza_hidari = rootObject.people[0].pose_keypoints_2d[41];//
+                            var asikubi_hidari = rootObject.people[0].pose_keypoints_2d[44];
+                            var oyayubi_hidari = rootObject.people[0].pose_keypoints_2d[59];//
+                            var kakato_hidari = rootObject.people[0].pose_keypoints_2d[65];//
+
+                            // 信頼値の判定　膝関節
+                            if (hiza_hidari > hiza_hidari_kakuritu && oyayubi_hidari > oyayubi_hidari_kakuritu && kakato_hidari > kakato_hidari_kakuritu)
+                            {
+                                // 取得するJSONファイルを001_keypoints.jsonとして保存する
+                                File.Copy(pathname, @"C:\openpose-build\x64\result_json_realtime\001_keypoints.json");
+                                // JSONファイルから画像名を特定する
+                                string gazou = name.Replace("keypoints.json", "rendered.png");
+                                //MessageBox.Show(gazou.ToString());
+                                pathgazouname = @"C:\openpose-build\x64\result_gazou\" + gazou.ToString();//画像ファイル名を確定
+                                //MessageBox.Show(pathgazouname.ToString());
+                                File.Copy(pathgazouname, @"C:\openpose-build\x64\newmedia\001.png");
+                                //if (File.Exists(pathgazouname)) MessageBox.Show("ある");
+                                //角度計算を行うＣ++プログラムのパラメータセット
+                                Process calculate = new Process();
+                                calculate.StartInfo.FileName = "20180906_.exe";
+                                calculate.StartInfo.Arguments = jointnumber;
+                                calculate.StartInfo.CreateNoWindow = true;
+                                calculate.StartInfo.ErrorDialog = true;
+                                calculate.StartInfo.WindowStyle = ProcessWindowStyle.Hidden;
+
+                                //角度計算プログラムを実行し、終了まで待機
+                                calculate.Start();
+                                calculate.WaitForExit();
+
+                                //今回日時
+                                今回記録日時＿label.Text = updateTime1.ToString("yyyy年MM月dd日 HH時mm分");
+                                // 角度の表示
+                                測定角度＿label.Text = calculate.ExitCode.ToString() + "度";
+
+                                // 成功音
+                                Console.Beep(3000, 700);
+                                Console.Beep(3000, 1000);
+
+                                break;
+                            }
+
+                        }
+                        catch// すべての例外に対応
+                        {
+                            // この音が鳴っている間は計測中の合図
+                            Console.Beep(500, 500);
+                        }
+                    }
+                    break;
+            }
+            //結果画像の表示
+            pictureBox1.SizeMode = PictureBoxSizeMode.Zoom;
+            string[] files = Directory.GetFiles(@"C:\openpose-build\x64\result_picture", "*.bmp");//@"C:\openpose-build\x64\result_picture"
+            Directory.GetFiles(@"C:\openpose-build\x64\result_picture", "*.bmp");//@"C:\openpose-build\x64\result_picture"
+            string newest = string.Empty;
+            DateTime updateTime = DateTime.MinValue;
+            foreach (string file in files)
+            {
+                FileInfo fi = new FileInfo(file);
+                if (fi.LastWriteTime > updateTime)
+                {
+                    updateTime = fi.LastWriteTime;
+                    newest = file;
+                }
+            }
+            pictureBox1.Image = Image.FromFile(newest);
+
+            // 名前が入力されている場合のみ、値をファイルに保存
+            if (名前入力フォーム.Text != "")
+            {
+                //入力された名前のテキストファイルが存在する場合、結果画面の前回記録・日時labelに出力
+                bool boolflag = File.Exists(@"C:\Users\mukai\Desktop\result\" + 名前入力フォーム.Text + " " + jointname + ".txt");
+                if (boolflag == true)
+                {
+                    //前回記録をlabelへ出力
+                    List<string> listdata = ReadCsv1();// ファイルから取得
+                    前回記録日時＿label.Text = listdata[listdata.Count - 1];
+                    前回測定角度＿label.Text = listdata[listdata.Count - 2] + "度";//度をつける
+
+                    //今回測定記録・日時をテキストファイルに格納
+                    listdata = ReadCsv1();// 入力された名前のファイルを取得し追加
+                    //データグリッドビュー項目からCSV文字列を生成
+                    StringBuilder sb = new StringBuilder();
+                    for (int i = 0; i < listdata.Count - 1; i++)
+                    {
+                        sb.Append(listdata[i].ToString());
+                        sb.Append(",");
+                    }
+                    string a;
+                    a = 測定角度＿label.Text.Replace("度", "");//label表示されている"度"を消す
+                    string filePath = @"C:\Users\mukai\Desktop\result\" + 名前入力フォーム.Text + " " + jointname + ".txt";
+                    //最後の一行の追加(カンマをつけない)
+                    sb.Append(a.ToString() + "," + 今回記録日時＿label.Text);// 今回の測定結果、日時の記録
+                    //書き込み
+                    WriteCsv(filePath, sb.ToString());
+
+
+                    
+                }
+                // 入力された名前のテキストファイルが存在しない場合、新規でテキストファイルを作成
+                else
+                {
+                    string filePath = @"C:\Users\mukai\Desktop\result\" + 名前入力フォーム.Text + " " + jointname + ".txt";
+                    StreamWriter sw = new StreamWriter(filePath, true, Encoding.GetEncoding("utf-8"));
+                    string a;
+                    a = 測定角度＿label.Text.Replace("度", "");//label表示されている"度"を消す
+                    sw.WriteLine(a.ToString() + "," + 今回記録日時＿label.Text);//計測結果記録
+                    sw.Close();
+                }
+            }
+            //名前の入力がなければ消す
+            else
+            {
+                前回記録日時＿label.Visible = false;
+                前回の測定結果＿label.Visible = false;
+                前回測定角度＿label.Visible = false;
+            }
+
+            System.Threading.Thread.Sleep(3000);// 待機3秒
+            openpose.Kill();// openposeの終了
+            //終了したか確認する
+            if (openpose.HasExited)
+            {
+                //MessageBox.Show("終了しました。");
+            }
+            else
+            {
+                MessageBox.Show("OpenPoseが終了していません。");
+            }
+
+            wizardControl1.SelectedIndex = 3;//ページの遷移
         }
 
         private void 画像を選択する_Click(object sender, EventArgs e)
@@ -175,41 +742,41 @@ namespace newapp1
                 }
             }
 
-            //OpenPoseのパラメータセット
+            // OpenPoseのパラメータセット
             Process openpose = new Process();
             openpose.StartInfo.FileName = "Release\\OpenPoseDemo.exe";
             openpose.StartInfo.CreateNoWindow = true;
             openpose.StartInfo.ErrorDialog = true;
             openpose.StartInfo.WindowStyle = System.Diagnostics.ProcessWindowStyle.Hidden;
 
-            //OpenPoseコマンドの指定
+            // OpenPoseコマンドの指定
             openpose.StartInfo.Arguments = "--image_dir newmedia --write_images result_image --write_json result_json --display 0 --number_people_max 1";
             //openpose.StartInfo.Arguments = "--process_real_time --write_json result_json";
-            //OpenPoseを実行し、終了まで待機
+            // OpenPoseを実行し、終了まで待機
             openpose.Start();
             openpose.WaitForExit();
 
-            //角度計算を行うＣ++プログラムのパラメータセット
+            // 角度計算を行うＣ++プログラムのパラメータセット
             Process calculate = new Process();
             calculate.StartInfo.FileName = "20180906.exe";
             calculate.StartInfo.Arguments = jointnumber;
             calculate.StartInfo.CreateNoWindow = true;
             calculate.StartInfo.ErrorDialog = true;
-            calculate.StartInfo.WindowStyle = System.Diagnostics.ProcessWindowStyle.Hidden;
+            calculate.StartInfo.WindowStyle = ProcessWindowStyle.Hidden;
 
-            //角度計算プログラムを実行し、終了まで待機
+            // 角度計算プログラムを実行し、終了まで待機
             calculate.Start();
             calculate.WaitForExit();
 
-            //結果画像の表示
+            // 結果画像の表示
             pictureBox1.SizeMode = PictureBoxSizeMode.Zoom;
             string[] files = Directory.GetFiles(@"C:\openpose-build\x64\result_picture", "*.bmp");
             Directory.GetFiles(@"C:\openpose-build\x64\result_picture", "*.bmp");
             string newest = string.Empty;
-            System.DateTime updateTime = System.DateTime.MinValue;
+            DateTime updateTime = DateTime.MinValue;
             foreach (string file in files)
             {
-                System.IO.FileInfo fi = new System.IO.FileInfo(file);
+                FileInfo fi = new FileInfo(file);
                 if (fi.LastWriteTime > updateTime)
                 {
                     updateTime = fi.LastWriteTime;
@@ -218,37 +785,50 @@ namespace newapp1
             }
             pictureBox1.Image = Image.FromFile(newest);
 
-            //角度の表示
+            // 角度の表示
             測定角度＿label.Text = calculate.ExitCode.ToString() + "度";
-
-            //名前が入力されている場合のみ、値をファイルに保存
+            
+            // 名前が入力されている場合のみ、値をファイルに保存
             if (名前入力フォーム.Text != "")
             {
                 //ファイルのパス
                 string filePath = @"C:\Users\mukai\Desktop\result\" + 名前入力フォーム.Text + " " + jointname + ".txt";
-                System.IO.StreamWriter sw = new System.IO.StreamWriter(filePath, true, System.Text.Encoding.GetEncoding("utf-8"));
-                sw.WriteLine(calculate.ExitCode.ToString());//計測結果記録
-                sw.Close();
+                //StreamWriter sw = new StreamWriter(filePath, true, Encoding.GetEncoding("utf8"));
+                //sw.WriteLine(calculate.ExitCode.ToString());//計測結果記録
+                //sw.Close();
+                List<string> listdata = ReadCsv1();// ファイルを取得
+                //データグリッドビュー項目からCSV文字列を生成
+                StringBuilder sb = new StringBuilder();
+                for (int i = 0; i < listdata.Count - 1; i++)
+                {
+                    sb.Append(listdata[i].ToString());
+                    sb.Append(",");
+                }
+                //最後の一行の追加(カンマをつけない)
+                sb.Append(calculate.ExitCode.ToString());
 
+                //書き込み
+                WriteCsv(filePath, sb.ToString());
             }
 
-            wizardControl1.SelectedIndex = 3;//ページの遷移
+            // ページの遷移
+            wizardControl1.SelectedIndex = 3;
 
         }
 
         private void 戻る＿画像取得画面_Click(object sender, EventArgs e)
         {
-            wizardControl1.SelectedIndex = 1;//ページの遷移
+            // ページの遷移
+            wizardControl1.SelectedIndex = 1;
         }
 
 //////////結果画面//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
         private void 結果を比較する_Click(object sender, EventArgs e)
         {
-            記録＿chart.ChartAreas.Clear();  //描画領域
-
-            記録＿chart.Series.Clear();      //データ・色・種類等
-            記録＿chart.Legends.Clear();     //凡例
+            記録＿chart.ChartAreas.Clear();  // 描画領域
+            記録＿chart.Series.Clear();      // データ・色・種類等
+            記録＿chart.Legends.Clear();     // 凡例
 
             string chart_area1 = "Area1";
             記録＿chart.ChartAreas.Add(new ChartArea(chart_area1));
@@ -298,7 +878,7 @@ namespace newapp1
             記録＿chart.ChartAreas[0].AxisY.MajorGrid.LineColor = Color.Gray;
             記録＿chart.ChartAreas[0].AxisY.MajorGrid.LineDashStyle = ChartDashStyle.Dot;
 
-            StreamReader sr = new System.IO.StreamReader(@"C:\Users\mukai\Desktop\result\" + 名前入力フォーム.Text + " " + jointname + ".txt");
+            StreamReader sr = new StreamReader(@"C:\Users\mukai\Desktop\result\" + 名前入力フォーム.Text + " " + jointname + ".txt");
 
             string line = "";
             List<string> list = new List<string>();
@@ -320,7 +900,7 @@ namespace newapp1
             記録＿chart.Series[0].Points[length - 1].Color = Color.Red; // ここで最後のグラフの色を変更
             記録＿chart.Series[0].Points.AddY(series[0]);
 
-            //分布図 
+            // 分布図 
             Series series_spraying = new Series("basic");
             {
                 series_spraying.ChartType = SeriesChartType.Line;//グラフのスタイル
@@ -344,44 +924,251 @@ namespace newapp1
             }
             記録＿chart.Series.Add(series_spraying);
 
-            wizardControl1.SelectedIndex = 4;//ページの遷移
+            // ページの遷移
+            wizardControl1.SelectedIndex = 4;
         }
 
         private void 新しく測定する_Click(object sender, EventArgs e)
         {
-            wizardControl1.SelectedIndex = 1;//ページの遷移
+            // ページの遷移
+            wizardControl1.SelectedIndex = 1;
         }
 
         private void メインに戻る_Click(object sender, EventArgs e)
         {
-            wizardControl1.SelectedIndex = 0;//ページの遷移
+            // ページの遷移
+            wizardControl1.SelectedIndex = 0;
         }
 
 //////////記録画面//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
         private void メインへ_Click(object sender, EventArgs e)
         {
-            wizardControl1.SelectedIndex = 0;//ページの遷移
+            // ページの遷移
+            wizardControl1.SelectedIndex = 0;
         }
 
         private void 関節選択＿comboBox_SelectedIndexChanged(object sender, EventArgs e)
         {
+            // 入力された名前と関節名でテキストファイルを探す
+            bool boolflag = File.Exists(@"C:\Users\mukai\Desktop\result\" + 名前入力フォーム.Text + " " + 関節選択＿comboBox.Text + ".txt");
+            if (boolflag == true)
+            {
+                記録＿chart.ChartAreas.Clear();  // 描画領域
+                記録＿chart.Series.Clear();      // データ・色・種類等
+                記録＿chart.Legends.Clear();     // 凡例
 
-            記録＿chart.ChartAreas.Clear();  //描画領域
-            記録＿chart.Series.Clear();      //データ・色・種類等
-            記録＿chart.Legends.Clear();     //凡例
+                string chart_area1 = "Area1";
+                記録＿chart.ChartAreas.Add(new ChartArea(chart_area1));
+
+                string legend1 = "Graph1";// グラフ最後前まで
+                記録＿chart.Series.Add(legend1);
+
+                // グラフ最後前
+                記録＿chart.Series[legend1].ChartType = SeriesChartType.Column;
+                記録＿chart.Series[legend1].Color = Color.Gray;
+                記録＿chart.Series[legend1].IsValueShownAsLabel = true;
+                // チャート設定
+                記録＿chart.ChartAreas[0].AxisX.Minimum = 0;
+                記録＿chart.ChartAreas[0].AxisX.Interval = 1;
+                記録＿chart.ChartAreas[0].AxisX.MajorGrid.Enabled = false;
+
+
+
+                int ref_deg = 0;
+
+                if (関節選択＿comboBox.Text == "股関節屈曲")
+                {
+                    記録＿chart.ChartAreas[0].AxisY.Maximum = 140;
+                    記録＿chart.ChartAreas[0].AxisY.Minimum = 50;
+                    記録＿chart.ChartAreas[0].AxisY.Interval = 10;
+                    ref_deg = 125;
+                }
+                else if (関節選択＿comboBox.Text == "膝関節屈曲")
+                {
+                    記録＿chart.ChartAreas[0].AxisY.Maximum = 150;
+                    記録＿chart.ChartAreas[0].AxisY.Minimum = 60;
+                    記録＿chart.ChartAreas[0].AxisY.Interval = 10;
+                    ref_deg = 130;
+                }
+                else if (関節選択＿comboBox.Text == "足関節伸展")
+                {
+                    記録＿chart.ChartAreas[0].AxisY.Maximum = 60;
+                    記録＿chart.ChartAreas[0].AxisY.Minimum = 0;
+                    記録＿chart.ChartAreas[0].AxisY.Interval = 10;
+                    ref_deg = 20;
+
+                }
+                記録＿chart.Series[legend1].Color = Color.FromArgb(65, 143, 102);
+                記録＿chart.ChartAreas[0].AxisY.MajorGrid.LineDashStyle = ChartDashStyle.Dot;
+
+                List<string> listdata = ReadCsv2();// ファイルを取得
+
+                int j = listdata.Count;
+                //MessageBox.Show(j.ToString());
+
+                記録＿chart.ChartAreas[0].AxisX.Maximum = listdata.Count - 0.1;
+
+                var series = new Series();
+
+                for (int i = 0; i < listdata.Count - 1; i++)
+                {
+                    記録＿chart.Series[0].Points.AddY(listdata[i]);
+                }
+
+                記録＿chart.Series[0].Points[listdata.Count - 2].Color = Color.Red; // ここで最後のグラフの色を変更
+                記録＿chart.Series[0].Points.AddY(series[0]);
+
+                //分布図 
+                Series series_spraying = new Series("basic");
+                {
+                    series_spraying.ChartType = SeriesChartType.Line;// グラフのスタイル
+                    series_spraying.Color = Color.OrangeRed;
+                    series_spraying.BorderWidth = 3;
+                    series_spraying.BorderDashStyle = ChartDashStyle.Dash;
+
+
+                    StripLine stlipLine = new StripLine
+                    {
+                        Text = $"参考可動域:{ref_deg}",
+                        TextAlignment = StringAlignment.Near,     // テキストの水平位置（Near:左, Center:中央, Far:右）
+                        TextLineAlignment = StringAlignment.Far,  // テキストの垂直位置（Near:下, Center:中央, Far:上）
+                        Interval = 0,                             // 線分の表示間隔 値を設定すると指定した間隔で表示される。
+                        IntervalOffset = ref_deg,                 // 線分の表示オフセット
+                        BorderWidth = 3,
+                        BorderDashStyle = ChartDashStyle.DashDot,
+                        BorderColor = Color.Red,
+                    };
+                    記録＿chart.ChartAreas[0].AxisY.StripLines.Add(stlipLine);
+
+
+                    //for (int j = -1; j < length; j++)
+                    //{
+                    //    series_spraying.Points.AddY(ref_deg);
+                    //}
+
+                }
+                記録＿chart.Series.Add(series_spraying);
+
+
+                記録＿chart.ChartAreas[0].AxisX.IsMarginVisible = false;  // マージンをなくす
+                記録＿chart.ChartAreas[0].AxisX.ScaleView.Size = 10;// 10以上だとスクロールして表示
+
+            // 入力された名前のファイルが存在しない場合
+            else
+            {
+                MessageBox.Show("入力された名前の記録は、ありませんでした。",
+                    "確認", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+        }
+
+
+
+
+        #region メソッド
+        private List<string> ReadCsv1()// ファイルに追加に使用
+        {
+            // ファイル内容を格納するリスト
+            List<string> itemList = new List<string>();
+
+            string fileData = string.Empty;
+
+            using (StreamReader sr = new StreamReader(@"C:\Users\mukai\Desktop\result\" + 名前入力フォーム.Text + " " + jointname + ".txt"))
+            {
+                fileData = sr.ReadToEnd();
+            }
+
+            // ファイル内容をカンマ区切りで配列に格納
+            string[] items = fileData.Split(',');
+
+            // 配列→リストに変換
+            foreach (string item in items)
+            {
+                itemList.Add(item);
+            }
+
+            return itemList;
+        }
+
+        private List<string> ReadCsv2()// グラフの表示に使用
+        {
+            // ファイル内容を格納するリスト
+            List<string> itemList = new List<string>();
+
+            string fileData = string.Empty;
+
+            // ファイル内容の全取得
+
+            using (StreamReader sr = new StreamReader(@"C:\Users\mukai\Desktop\result\" + 名前入力フォーム.Text +" "+ 関節選択＿comboBox.Text + ".txt"))
+            {
+                fileData = sr.ReadToEnd();
+            }
+
+            // ファイル内容をカンマ区切りで配列に格納
+            string[] items = fileData.Split(',');
+
+            // 配列→リストに変換
+            foreach (string item in items)
+            {
+                itemList.Add(item);
+            }
+
+            return itemList;
+        }
+
+        private List<string> ReadCsv3()// ファイルから取得に使用
+        {
+            // ファイル内容を格納するリスト
+            List<string> itemList = new List<string>();
+
+            string fileData = string.Empty;
+
+            // ファイル内容の全取得
+
+            using (StreamReader sr = new StreamReader(@"C:\Users\mukai\Desktop\result\" + 名前入力フォーム.Text + " " + jointname + ".txt"))
+            {
+                fileData = sr.ReadToEnd();
+            }
+
+            // ファイル内容をカンマ区切りで配列に格納
+            string[] items = fileData.Split(',');
+
+            // 配列→リストに変換
+            foreach (string item in items)
+            {
+                itemList.Add(item);
+            }
+
+            return itemList;
+        }
+
+        private void WriteCsv(string outputFileName, string text)
+        {
+            // 書き込みます。
+            using (StreamWriter sw = new StreamWriter(outputFileName, false, Encoding.UTF8))
+            {
+                sw.Write(text);
+            }
+        }
+
+        public void InitializeChartArea()
+        {
+
+            記録＿chart.ChartAreas.Clear();  // 描画領域
+            記録＿chart.Series.Clear();      // データ・色・種類等
+            記録＿chart.Legends.Clear();     // 凡例
 
             string chart_area1 = "Area1";
             記録＿chart.ChartAreas.Add(new ChartArea(chart_area1));
 
-            string legend1 = "Graph1";//グラフ最後前まで
+            string legend1 = "Graph1";// グラフ最後前まで
             記録＿chart.Series.Add(legend1);
 
-            //グラフ最後前
+            // グラフ最後前
             記録＿chart.Series[legend1].ChartType = SeriesChartType.Column;
             記録＿chart.Series[legend1].Color = Color.Gray;
             記録＿chart.Series[legend1].IsValueShownAsLabel = true;
-            //チャート設定
+            // チャート設定
             記録＿chart.ChartAreas[0].AxisX.Minimum = 0;
             記録＿chart.ChartAreas[0].AxisX.Interval = 1;
             記録＿chart.ChartAreas[0].AxisX.MajorGrid.Enabled = false;
@@ -410,67 +1197,25 @@ namespace newapp1
                 ref_deg = 20;
 
             }
-            記録＿chart.Series[legend1].Color = Color.FromArgb(65, 143, 102);
-            記録＿chart.ChartAreas[0].AxisY.MajorGrid.LineDashStyle = ChartDashStyle.Dot;
-
-            //StreamReader sr = new System.IO.StreamReader(@"C:\Users\mukai\Desktop\result\" + 名前入力フォーム.Text + " " + 関節選択＿comboBox.Text + ".txt");
-            StreamReader sr = new System.IO.StreamReader(@"C:\Users\mukai\Desktop\result\新しいテキスト ドキュメント.txt");
-            //string line = "";
-            //List<string> list = new List<string>();         //空のListを作成する
-            int length = 0;
-
-            string textall = sr.ReadToEnd();
-            string[] list = textall.Split(',');
-
-            // test.txtを1行ずつ読み込んでいき、末端(何もない行)までwhile文で繰り返す
-            //textall = sr.ReadToEnd();
-
-
-            記録＿chart.ChartAreas[0].AxisX.Maximum = list.Length-0.1 ;
-
-            var series = new Series();
-
-            for (int i = 0; i < list.Length - 1; i++)
-            {
-                記録＿chart.Series[0].Points.AddY(list[i]);
-            }
-
-            記録＿chart.Series[0].Points[list.Length - 2].Color = Color.Red; // ここで最後のグラフの色を変更
-            記録＿chart.Series[0].Points.AddY(series[0]);
-
-            //分布図 
-            Series series_spraying = new Series("basic");
-            {
-                series_spraying.ChartType = SeriesChartType.Line;//グラフのスタイル
-                series_spraying.Color = Color.OrangeRed;
-                series_spraying.BorderWidth = 3;
-                series_spraying.BorderDashStyle = ChartDashStyle.Dash;
-
-
-                StripLine stlipLine = new StripLine
-                {
-                    Text = $"参考可動域:{ref_deg}",
-                    TextAlignment = StringAlignment.Near,     // テキストの水平位置（Near:左, Center:中央, Far:右）
-                    TextLineAlignment = StringAlignment.Far,  // テキストの垂直位置（Near:下, Center:中央, Far:上）
-                    Interval = 0,                             // 線分の表示間隔 値を設定すると指定した間隔で表示される。
-                    IntervalOffset = ref_deg,                 // 線分の表示オフセット
-                    BorderWidth = 3,
-                    BorderDashStyle = ChartDashStyle.DashDot,
-                    BorderColor = Color.Red,
-                };
-                記録＿chart.ChartAreas[0].AxisY.StripLines.Add(stlipLine);
-
-
-                //for (int j = -1; j < length; j++)
-                //{
-                //    series_spraying.Points.AddY(ref_deg);
-                //}
-
-            }
-            記録＿chart.Series.Add(series_spraying);
         }
 
+        private bool CheckAndAddPoint(string value)
+        {
+            double y = 0.0;
+
+            if (Double.TryParse(value, out y))
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        }
+        #endregion
+        
     }
+
     public partial class WizardControl : TabControl
     {
         // デザイナ画面以外でタブを消す
@@ -488,7 +1233,7 @@ namespace newapp1
 
         }
 
-        //←→キーの無効
+        // ←→キーの無効
         private void dataGridView1_KeyDown(object sender, KeyEventArgs e)
         {
             if (e.KeyCode == Keys.Right || e.KeyData == Keys.Left)
@@ -496,4 +1241,5 @@ namespace newapp1
         }
 
     }
+
 }
